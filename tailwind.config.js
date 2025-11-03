@@ -8,6 +8,7 @@ export default {
         brand: '#0C5FA0',
         accent: '#0EBAE3',
         night: '#0B132B',
+        canvas: '#F7F7F2',
       },
       fontFamily: {
         inter: ['Inter', 'system-ui', 'sans-serif'],

@@ -18,7 +18,7 @@ const Navbar = () => {
   const toggleMenu = () => setIsOpen((prev) => !prev);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-brand/10 bg-white/85 backdrop-blur dark:border-night/40 dark:bg-night/85" role="banner">
+    <header className="sticky top-0 z-50 border-b border-brand/10 bg-canvas/85 backdrop-blur dark:border-night/40 dark:bg-night/85" role="banner">
       <Container className="flex items-center justify-between py-4">
         <a href="#accueil" className="flex items-center gap-3 text-brand" aria-label="Retour à l’accueil">
           <img src={logo} alt="Sovana" className="h-10 w-auto" loading="lazy" />

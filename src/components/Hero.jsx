@@ -6,7 +6,7 @@ import Badge from './UI/Badge.jsx';
 const Hero = () => (
   <section
     id="accueil"
-    className="relative overflow-hidden bg-gradient-to-b from-white via-white to-white py-24 dark:from-night dark:via-night dark:to-night"
+    className="relative overflow-hidden bg-gradient-to-b from-canvas via-canvas to-canvas py-24 dark:from-night dark:via-night dark:to-night"
     aria-labelledby="hero-title"
   >
     <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(14,186,227,0.3),_transparent_60%)]" aria-hidden="true" />

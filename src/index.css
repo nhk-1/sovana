@@ -9,7 +9,7 @@
 body {
   font-family: theme('fontFamily.inter');
   min-height: 100vh;
-  background-color: #ffffff;
+  background-color: #f7f7f2;
 }
 
 ::selection {

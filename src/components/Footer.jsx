@@ -1,7 +1,7 @@
 import Container from './UI/Container.jsx';
 
 const Footer = () => (
-  <footer className="border-t border-brand/10 bg-white py-8 dark:border-night/40 dark:bg-night" role="contentinfo">
+  <footer className="border-t border-brand/10 bg-canvas py-8 dark:border-night/40 dark:bg-night" role="contentinfo">
     <Container className="flex flex-col gap-4 text-sm text-brand/70 dark:text-white/70 md:flex-row md:items-center md:justify-between">
       <div className="flex flex-col gap-2">
         <span className="font-semibold text-brand dark:text-white">© 2025 Sovana</span>

@@ -7,7 +7,7 @@ import Contact from './components/Contact.jsx';
 import Footer from './components/Footer.jsx';
 
 const App = () => (
-  <div className="flex min-h-screen flex-col bg-white text-brand dark:bg-night dark:text-white">
+  <div className="flex min-h-screen flex-col bg-canvas text-brand dark:bg-night dark:text-white">
     <Navbar />
     <main>
       <Hero />
