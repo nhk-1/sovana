@@ -5,8 +5,9 @@ export default {
   theme: {
     extend: {
       colors: {
-        midnight: '#0B132B',
-        ocean: '#3A506B',
+        brand: '#0C5FA0',
+        accent: '#0EBAE3',
+        night: '#0B132B',
       },
       fontFamily: {
         inter: ['Inter', 'system-ui', 'sans-serif'],
@@ -15,7 +16,7 @@ export default {
         content: '1200px',
       },
       boxShadow: {
-        subtle: '0 20px 45px -30px rgba(11, 19, 43, 0.45)',
+        subtle: '0 20px 45px -30px rgba(12, 95, 160, 0.35)',
       },
     },
   },

@@ -9,9 +9,9 @@ const Button = ({ children, href, onClick, variant = 'primary', className = '', 
   const baseClasses =
     'inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2';
   const variants = {
-    primary: 'bg-ocean text-white shadow-subtle hover:bg-midnight focus-visible:outline-ocean',
+    primary: 'bg-brand text-white shadow-subtle hover:bg-brand/90 focus-visible:outline-accent',
     secondary:
-      'border border-ocean/40 bg-transparent text-ocean hover:border-ocean focus-visible:outline-ocean dark:border-white/50 dark:text-white dark:hover:border-white',
+      'border border-accent/40 bg-transparent text-brand hover:border-accent focus-visible:outline-accent dark:border-white/50 dark:text-white dark:hover:border-white',
   };
 
   if (href) {

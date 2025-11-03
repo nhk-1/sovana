@@ -18,11 +18,11 @@ const Navbar = () => {
   const toggleMenu = () => setIsOpen((prev) => !prev);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-white/80 backdrop-blur dark:bg-midnight/80" role="banner">
+    <header className="sticky top-0 z-50 border-b border-brand/10 bg-white/85 backdrop-blur dark:border-night/40 dark:bg-night/85" role="banner">
       <Container className="flex items-center justify-between py-4">
-        <a href="#accueil" className="flex items-center gap-3" aria-label="Retour à l’accueil">
+        <a href="#accueil" className="flex items-center gap-3 text-brand" aria-label="Retour à l’accueil">
           <img src={logo} alt="Sovana" className="h-10 w-auto" loading="lazy" />
-          <span className="text-xl font-semibold text-midnight dark:text-white">Sovana</span>
+          <span className="text-xl font-semibold text-brand dark:text-white">Sovana</span>
         </a>
         <nav aria-label="Navigation principale" className="hidden items-center gap-8 md:flex">
           {NAV_LINKS.map((link) => (
@@ -32,7 +32,7 @@ const Navbar = () => {
               smooth
               duration={600}
               offset={-80}
-              className="cursor-pointer text-sm font-medium text-midnight/80 transition hover:text-ocean focus:outline-none focus-visible:text-ocean dark:text-white/80"
+              className="cursor-pointer text-sm font-medium text-brand/75 transition hover:text-accent focus:outline-none focus-visible:text-accent dark:text-white/80"
             >
               {link.label}
             </Link>
@@ -43,7 +43,7 @@ const Navbar = () => {
         </nav>
         <button
           type="button"
-          className="md:hidden"
+          className="text-brand md:hidden"
           aria-expanded={isOpen}
           aria-controls="mobile-menu"
           onClick={toggleMenu}
@@ -53,7 +53,7 @@ const Navbar = () => {
             {[0, 1, 2].map((line) => (
               <span
                 key={line}
-                className="block h-0.5 w-6 bg-midnight transition dark:bg-white"
+                className="block h-0.5 w-6 bg-brand transition dark:bg-white"
               ></span>
             ))}
           </div>
@@ -74,7 +74,7 @@ const Navbar = () => {
                 duration={600}
                 offset={-80}
                 onClick={() => setIsOpen(false)}
-                className="cursor-pointer text-base font-medium text-midnight/80 transition hover:text-ocean focus:outline-none focus-visible:text-ocean dark:text-white/80"
+                className="cursor-pointer text-base font-medium text-brand/75 transition hover:text-accent focus:outline-none focus-visible:text-accent dark:text-white/80"
               >
                 {link.label}
               </Link>

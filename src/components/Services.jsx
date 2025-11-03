@@ -31,8 +31,8 @@ const Services = () => (
     description="Solutions end-to-end"
   >
     <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-      {SERVICES.map((service) => (
-        <Card key={service.title} icon={service.icon} title={service.title} items={service.items} />
+      {SERVICES.map((service, index) => (
+        <Card key={service.title} icon={service.icon} title={service.title} items={service.items} index={index} />
       ))}
     </div>
   </Section>
