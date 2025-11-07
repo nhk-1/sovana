@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  font-family: theme('fontFamily.inter');
+  min-height: 100vh;
+  background-color: #f7f7f2;
+}
+
+::selection {
+  background-color: rgba(14, 186, 227, 0.4);
+  color: #06375b;
+}
+
+a {
+  color: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(14, 186, 227, 0.75);
+  outline-offset: 2px;
+}

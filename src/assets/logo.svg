@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 32" role="img" aria-label="Sovana logo">
+  <text x="38" y="22" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="600" fill="#FFFFFF">
+    Sovana
+  </text>
+  <path
+    d="M16 4c-6.6 0-12 4-12 10 0 5.5 4.2 7.9 9.4 9.8 3.6 1.4 5.6 2.5 5.6 4.7 0 1.7-1.5 2.9-4.2 2.9-2.6 0-5.3-1-7.6-2.8l-2.4 3.3C7 33.4 11 35 14.7 35c6.7 0 11.3-3.7 11.3-9.3 0-5.6-4.3-7.8-8.7-9.4-4.5-1.7-6.3-2.6-6.3-4.9 0-1.8 1.7-3 4.4-3 2.4 0 4.9.8 7 2.2l2.3-3.4C22 5 19.1 4 16 4Z"
+    fill="#3A506B"
+    transform="scale(0.55) translate(5 0)"
+  />
+</svg>
