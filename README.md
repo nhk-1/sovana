@@ -23,24 +23,23 @@ Options :
 
 ## Format PDF attendu
 
-Le parser extrait le texte brut du PDF puis applique les mêmes heuristiques que pour un fichier tabulaire :
+Le parser extrait le texte brut du PDF et tente ensuite de reconstruire des transactions quel que soit l’ordre ou la présence des colonnes :
 
-- Séparateur `;` ou `,` détecté automatiquement (tabs convertis en séparateur)
-- Colonnes attendues : date, libellé, montant ou couple débit/crédit
-- Dates supportées : `YYYY-MM-DD`, `DD/MM/YYYY`, `DD-MM-YYYY`
-- Montants avec `,` ou `.` (débit négatif ou colonne débit dédiée)
-- Libellés ignorés automatiquement : `Ajout de fonds`, `Solde`, `Virement interne`
-- Les lignes invalides sont ignorées (et journalisées en debug) sans bloquer l’import
-- Exemple de lignes dans un PDF :
+- Détection automatique du séparateur `;` ou `,` (tabs convertis en séparateur) mais fonctionne aussi sur des lignes libres sans tableau.
+- Colonnes date/libellé/montant/débit/crédit détectées par les en-têtes **ou** par inspection des valeurs (position variable acceptée).
+- Dates supportées : `YYYY-MM-DD`, `DD/MM/YYYY`, `DD-MM-YYYY` et reconnues même au milieu d’une phrase.
+- Montants avec `,` ou `.` (débit négatif, colonnes séparées ou montants isolés dans une phrase).
+- Libellés ignorés automatiquement : `Ajout de fonds`, `Solde`, `Virement interne`.
+- Les lignes invalides sont ignorées (et journalisées en debug) sans bloquer l’import.
+
+Exemples de lignes acceptées :
 
 ```
 date;libelle;debit;credit
 2024-01-02;NETFLIX;13,49;
-2024-02-02;NETFLIX;13,49;
-2024-03-02;NETFLIX;13,49;
-2024-01-10;SPOTIFY;9,99;
-2024-02-10;SPOTIFY;9,99;
-2024-03-10;SPOTIFY;9,99;
+Prime Cashback;15,00;01/02/2024;
+02-02-2024 Spotify 9.99 paiement
+Netflix -13,49 prélèvement 01/01/2024
 ```
 
 ## Logique de détection

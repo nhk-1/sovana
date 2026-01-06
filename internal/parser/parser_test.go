@@ -71,6 +71,45 @@ func TestParsePDFWithoutHeader(t *testing.T) {
 	}
 }
 
+func TestParsePDFWithShuffledColumns(t *testing.T) {
+	pdfData := buildPDF(t, []string{
+		"Libellé;Crédit;Date;Débit",
+		"Prime Cashback;15,00;01/02/2024;",
+		"Netflix;;2024-03-01;13.49",
+	})
+
+	txs, err := ParsePDF(bytes.NewReader(pdfData))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(txs) != 2 {
+		t.Fatalf("expected 2 transactions, got %d", len(txs))
+	}
+	if txs[0].Amount != 15.00 || txs[1].Amount != -13.49 {
+		t.Fatalf("unexpected amounts: %+v", txs)
+	}
+}
+
+func TestParsePDFLooseLines(t *testing.T) {
+	pdfData := buildPDF(t, []string{
+		"Some header text",
+		"Netflix -13,49 prélèvement 01/01/2024",
+		"02-02-2024 Spotify 9.99 paiement",
+		"ignored line without amount",
+	})
+
+	txs, err := ParsePDF(bytes.NewReader(pdfData))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(txs) != 2 {
+		t.Fatalf("expected 2 transactions, got %d", len(txs))
+	}
+	if txs[0].Label == "" || txs[1].Label == "" {
+		t.Fatalf("labels should not be empty: %+v", txs)
+	}
+}
+
 func buildPDF(t *testing.T, lines []string) []byte {
 	t.Helper()
 	var builder strings.Builder

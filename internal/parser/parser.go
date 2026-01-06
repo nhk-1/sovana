@@ -21,6 +21,14 @@ var dateLayouts = []string{
 	"02-01-2006",
 }
 
+var dateRegexes = []*regexp.Regexp{
+	regexp.MustCompile(`\b\d{4}-\d{2}-\d{2}\b`),
+	regexp.MustCompile(`\b\d{2}/\d{2}/\d{4}\b`),
+	regexp.MustCompile(`\b\d{2}-\d{2}-\d{4}\b`),
+}
+
+var amountRegex = regexp.MustCompile(`[-+]?\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d+)?`)
+
 type columnIndexes struct {
 	date   int
 	label  int
@@ -50,36 +58,14 @@ func ParsePDF(r io.Reader) ([]model.Transaction, error) {
 		return nil, errors.New("pdf contains no text to parse")
 	}
 
-	rows := buildRowsFromText(text)
-	if len(rows) == 0 {
-		return nil, errors.New("no tabular data found in pdf")
-	}
+	rows, lines := buildRowsFromText(text)
 
-	idx, start := detectColumns(rows)
-	transactions := make([]model.Transaction, 0, len(rows)-start)
-
-	for i := start; i < len(rows); i++ {
-		row := rows[i]
-		dateVal := fieldAt(row, idx.date)
-		parsedDate, err := parseDate(dateVal)
-		if err != nil {
-			debugf("skipping row %d: invalid date '%s'", i+1, dateVal)
-			continue
-		}
-
-		label := strings.TrimSpace(fieldAt(row, idx.label))
-		if isNonTransactionLabel(label) {
-			debugf("skipping row %d: non-transaction label '%s'", i+1, label)
-			continue
-		}
-
-		amount, ok := extractAmount(row, idx)
-		if !ok {
-			debugf("skipping row %d: unable to determine amount", i+1)
-			continue
-		}
-
-		transactions = append(transactions, model.Transaction{Date: parsedDate, Label: label, Amount: amount})
+	tabular := parseTabular(rows)
+	var transactions []model.Transaction
+	if len(tabular) > 0 {
+		transactions = mergeTransactions(tabular, parseLooseLines(filterLooseCandidates(lines)))
+	} else {
+		transactions = parseLooseLines(lines)
 	}
 
 	if len(transactions) == 0 {
@@ -134,16 +120,18 @@ func extractPDFText(data []byte) (string, error) {
 	return content, nil
 }
 
-func buildRowsFromText(text string) [][]string {
+func buildRowsFromText(text string) ([][]string, []string) {
 	sep := detectSeparator([]byte(text))
 	lines := strings.Split(text, "\n")
 	rows := make([][]string, 0, len(lines))
+	cleaned := make([]string, 0, len(lines))
 	for _, raw := range lines {
 		line := strings.TrimSpace(raw)
 		if line == "" {
 			continue
 		}
 
+		cleaned = append(cleaned, line)
 		line = strings.ReplaceAll(line, "\t", string(sep))
 
 		var fields []string
@@ -163,7 +151,7 @@ func buildRowsFromText(text string) [][]string {
 		}
 		rows = append(rows, fields)
 	}
-	return rows
+	return rows, cleaned
 }
 
 func detectSeparator(data []byte) rune {
@@ -216,13 +204,12 @@ func detectColumns(rows [][]string) (columnIndexes, int) {
 	}
 
 	hasHeader := idx.date >= 0 && idx.label >= 0 && (idx.amount >= 0 || idx.debit >= 0 || idx.credit >= 0)
-	if !hasHeader {
-		if len(header) >= 3 {
-			return columnIndexes{date: 0, label: 1, amount: 2, debit: -1, credit: -1}, 0
-		}
-		return columnIndexes{date: 0, label: 1, amount: -1, debit: -1, credit: -1}, 0
+	if hasHeader {
+		return idx, 1
 	}
-	return idx, 1
+
+	inferred := inferColumns(rows)
+	return inferred, 0
 }
 
 func parseDate(value string) (time.Time, error) {
@@ -317,6 +304,383 @@ func normalizeHeader(s string) string {
 	lower = strings.ReplaceAll(lower, " ", "")
 	lower = strings.ReplaceAll(lower, "-", "")
 	return lower
+}
+
+func inferColumns(rows [][]string) columnIndexes {
+	stats := make([]struct {
+		dateCount   int
+		amountCount int
+		negCount    int
+		posCount    int
+		totalLen    int
+		samples     int
+	}, maxColumns(rows))
+
+	for _, row := range rows {
+		for i, field := range row {
+			if _, err := parseDate(field); err == nil {
+				stats[i].dateCount++
+			}
+			if amt, err := parseAmount(field); err == nil {
+				stats[i].amountCount++
+				if amt < 0 {
+					stats[i].negCount++
+				} else {
+					stats[i].posCount++
+				}
+			}
+			stats[i].totalLen += len(field)
+			stats[i].samples++
+		}
+	}
+
+	idx := columnIndexes{date: -1, label: -1, amount: -1, debit: -1, credit: -1}
+	idx.date = bestIndex(stats, func(s *struct{ dateCount, amountCount, negCount, posCount, totalLen, samples int }) int {
+		return s.dateCount
+	})
+
+	amountCandidates := indexesAbove(stats, func(s *struct{ dateCount, amountCount, negCount, posCount, totalLen, samples int }) int {
+		return s.amountCount
+	}, 0)
+	switch len(amountCandidates) {
+	case 0:
+		idx.amount = -1
+	case 1:
+		idx.amount = amountCandidates[0]
+	default:
+		debitIdx := -1
+		creditIdx := -1
+		for _, c := range amountCandidates {
+			if stats[c].negCount > stats[c].posCount && debitIdx == -1 {
+				debitIdx = c
+				continue
+			}
+			if stats[c].posCount >= stats[c].negCount && creditIdx == -1 {
+				creditIdx = c
+			}
+		}
+		if debitIdx != -1 || creditIdx != -1 {
+			idx.debit = debitIdx
+			idx.credit = creditIdx
+		}
+		if idx.debit == -1 && idx.credit == -1 {
+			idx.amount = bestIndex(stats, func(s *struct{ dateCount, amountCount, negCount, posCount, totalLen, samples int }) int {
+				return s.amountCount
+			})
+		}
+	}
+
+	idx.label = bestIndex(stats, func(s *struct{ dateCount, amountCount, negCount, posCount, totalLen, samples int }) int {
+		return s.totalLen
+	}, excludeIndexes(idx)...)
+
+	if idx.label == -1 {
+		idx.label = 1
+	}
+	if idx.date == -1 {
+		idx.date = 0
+	}
+	return idx
+}
+
+func maxColumns(rows [][]string) int {
+	max := 0
+	for _, row := range rows {
+		if len(row) > max {
+			max = len(row)
+		}
+	}
+	return max
+}
+
+func bestIndex(stats []struct {
+	dateCount   int
+	amountCount int
+	negCount    int
+	posCount    int
+	totalLen    int
+	samples     int
+}, scorer func(*struct {
+	dateCount   int
+	amountCount int
+	negCount    int
+	posCount    int
+	totalLen    int
+	samples     int
+}) int, exclude ...int) int {
+	excluded := make(map[int]struct{})
+	for _, e := range exclude {
+		excluded[e] = struct{}{}
+	}
+	best := -1
+	bestScore := 0
+	for i := range stats {
+		if _, ok := excluded[i]; ok {
+			continue
+		}
+		score := scorer(&stats[i])
+		if score > bestScore {
+			bestScore = score
+			best = i
+		}
+	}
+	return best
+}
+
+func indexesAbove(stats []struct {
+	dateCount   int
+	amountCount int
+	negCount    int
+	posCount    int
+	totalLen    int
+	samples     int
+}, scorer func(*struct {
+	dateCount   int
+	amountCount int
+	negCount    int
+	posCount    int
+	totalLen    int
+	samples     int
+}) int, threshold int) []int {
+	res := []int{}
+	for i := range stats {
+		if scorer(&stats[i]) > threshold {
+			res = append(res, i)
+		}
+	}
+	return res
+}
+
+func excludeIndexes(idx columnIndexes) []int {
+	res := []int{}
+	for _, v := range []int{idx.date, idx.amount, idx.debit, idx.credit} {
+		if v >= 0 {
+			res = append(res, v)
+		}
+	}
+	return res
+}
+
+func parseTabular(rows [][]string) []model.Transaction {
+	idx, start := detectColumns(rows)
+	transactions := make([]model.Transaction, 0, len(rows)-start)
+
+	for i := start; i < len(rows); i++ {
+		row := rows[i]
+		dateVal := fieldAt(row, idx.date)
+		parsedDate, err := parseDate(dateVal)
+		if err != nil {
+			debugf("skipping row %d: invalid date '%s'", i+1, dateVal)
+			continue
+		}
+
+		label := cleanLabel(fieldAt(row, idx.label))
+		if label == "" && len(row) > 1 {
+			label = cleanLabel(strings.Join(row, " "))
+		}
+		if isNonTransactionLabel(label) {
+			debugf("skipping row %d: non-transaction label '%s'", i+1, label)
+			continue
+		}
+
+		amount, ok := extractAmount(row, idx)
+		if !ok {
+			debugf("skipping row %d: unable to determine amount", i+1)
+			continue
+		}
+
+		transactions = append(transactions, model.Transaction{Date: parsedDate, Label: label, Amount: amount})
+	}
+	return transactions
+}
+
+func parseLooseLines(lines []string) []model.Transaction {
+	var txs []model.Transaction
+	for i, line := range lines {
+		dateVal, datePos, ok := findDate(line)
+		if !ok {
+			continue
+		}
+		parsedDate, err := parseDate(dateVal)
+		if err != nil {
+			continue
+		}
+
+		amtVal, amtPos, amtOk := findAmount(line)
+		if !amtOk {
+			continue
+		}
+		amount, err := parseAmount(amtVal)
+		if err != nil {
+			continue
+		}
+
+		label := cleanLabel(removeSpan(line, datePos, amtPos))
+		if label == "" {
+			label = cleanLabel(strings.ReplaceAll(removeSpan(line, amtPos, datePos), "  ", " "))
+		}
+		if label == "" {
+			label = cleanLabel(line)
+		}
+		if isNonTransactionLabel(label) {
+			debugf("skipping line %d: non-transaction label '%s'", i+1, label)
+			continue
+		}
+
+		txs = append(txs, model.Transaction{Date: parsedDate, Label: label, Amount: amount})
+	}
+	return txs
+}
+
+func filterLooseCandidates(lines []string) []string {
+	res := make([]string, 0, len(lines))
+	for _, line := range lines {
+		separators := strings.Count(line, ";") + strings.Count(line, ",")
+		if separators >= 2 {
+			continue
+		}
+		res = append(res, line)
+	}
+	return res
+}
+
+func findDate(line string) (string, [2]int, bool) {
+	lower := strings.ToLower(line)
+	for _, re := range dateRegexes {
+		loc := re.FindStringIndex(lower)
+		if loc != nil {
+			return line[loc[0]:loc[1]], [2]int{loc[0], loc[1]}, true
+		}
+	}
+	return "", [2]int{}, false
+}
+
+func findAmount(line string) (string, [2]int, bool) {
+	matches := amountRegex.FindAllStringIndex(line, -1)
+	if len(matches) == 0 {
+		return "", [2]int{}, false
+	}
+	for i := len(matches) - 1; i >= 0; i-- {
+		pos := matches[i]
+		token := line[pos[0]:pos[1]]
+		if isDateToken(token) || isEmbeddedInDate(line, pos) {
+			continue
+		}
+		return token, [2]int{pos[0], pos[1]}, true
+	}
+	return "", [2]int{}, false
+}
+
+func isEmbeddedInDate(line string, pos []int) bool {
+	start := pos[0]
+	end := pos[1]
+	if start > 0 {
+		prev := line[start-1]
+		if prev == '/' || prev == '-' {
+			return true
+		}
+	}
+	if end < len(line) {
+		next := line[end]
+		if next == '/' || next == '-' {
+			return true
+		}
+	}
+	return false
+}
+
+func removeSpan(line string, a, b [2]int) string {
+	start := minInt(a[0], b[0])
+	end := maxInt(a[1], b[1])
+	if start == 0 && end == 0 {
+		return line
+	}
+	var builder strings.Builder
+	builder.WriteString(line[:start])
+	builder.WriteString(" ")
+	if end < len(line) {
+		builder.WriteString(line[end:])
+	}
+	return builder.String()
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func mergeTransactions(existing, more []model.Transaction) []model.Transaction {
+	if len(more) == 0 {
+		return existing
+	}
+	seen := make(map[string]struct{}, len(existing)+len(more))
+	seenAbs := make(map[string]struct{}, len(existing)+len(more))
+	merged := make([]model.Transaction, 0, len(existing)+len(more))
+	for _, tx := range existing {
+		key := fmt.Sprintf("%s|%s|%.2f", tx.Date.Format(time.DateOnly), labelKey(tx.Label), tx.Amount)
+		seen[key] = struct{}{}
+		seenAbs[fmt.Sprintf("%s|%s|%.2f", tx.Date.Format(time.DateOnly), labelKey(tx.Label), math.Abs(tx.Amount))] = struct{}{}
+		merged = append(merged, tx)
+	}
+	for _, tx := range more {
+		key := fmt.Sprintf("%s|%s|%.2f", tx.Date.Format(time.DateOnly), labelKey(tx.Label), tx.Amount)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		absKey := fmt.Sprintf("%s|%s|%.2f", tx.Date.Format(time.DateOnly), labelKey(tx.Label), math.Abs(tx.Amount))
+		if _, ok := seenAbs[absKey]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		seenAbs[absKey] = struct{}{}
+		merged = append(merged, tx)
+	}
+	return merged
+}
+
+func cleanLabel(label string) string {
+	if label == "" {
+		return ""
+	}
+	replacer := strings.NewReplacer(";", " ", ",", " ", "|", " ", "\t", " ")
+	label = replacer.Replace(label)
+	label = strings.TrimSpace(strings.Join(strings.Fields(label), " "))
+	return label
+}
+
+func labelKey(label string) string {
+	cleaned := cleanLabel(label)
+	tokens := strings.Fields(cleaned)
+	filtered := make([]string, 0, len(tokens))
+	for _, tok := range tokens {
+		lowerTok := strings.ToLower(tok)
+		if isDateToken(lowerTok) || amountRegex.MatchString(lowerTok) {
+			continue
+		}
+		filtered = append(filtered, lowerTok)
+	}
+	if len(filtered) == 0 {
+		return strings.ToLower(cleaned)
+	}
+	return strings.Join(filtered, " ")
+}
+
+func isDateToken(token string) bool {
+	for _, re := range dateRegexes {
+		if re.MatchString(token) {
+			return true
+		}
+	}
+	return false
 }
 
 func fieldAt(row []string, idx int) string {
