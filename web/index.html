@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SaaS Détection d’Abonnements</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="hero__content">
+      <p class="eyebrow">MVP v1</p>
+      <h1>Détectez vos abonnements récurrents en un clic</h1>
+      <p class="lede">Importez un relevé bancaire CSV, nous repérons les débits mensuels et vous donnons le lien direct pour résilier.</p>
+    </div>
+  </header>
+
+  <main class="card">
+    <section class="upload">
+      <label for="file" class="label">Relevé bancaire (CSV)</label>
+      <div class="upload__row">
+        <input type="file" id="file" accept=".csv" />
+        <button id="analyze" class="primary">Analyser</button>
+      </div>
+      <p class="hint">Format attendu : date, libellé, montant. Exemple : 2024-03-05,NETFLIX,-13.49</p>
+      <div id="status" class="status"></div>
+    </section>
+
+    <section class="results">
+      <div class="results__header">
+        <h2>Abonnements détectés</h2>
+        <span id="count" class="badge">0</span>
+      </div>
+      <div id="subscriptions" class="subscriptions empty">
+        <p class="empty__text">Importez un fichier pour démarrer l'analyse.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Prototype SaaS — détection côté serveur, stockage en mémoire, aucune action bancaire.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
