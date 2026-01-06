@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sovana Items</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <header class="hero">
+        <h1>Sovana Items</h1>
+        <p class="subtitle">A minimal yet production-ready Go web app demo.</p>
+    </header>
+
+    <main class="container">
+        <section class="card">
+            <h2>Add an item</h2>
+            <form id="item-form">
+                <div class="form-row">
+                    <label for="title">Title</label>
+                    <input type="text" id="title" name="title" required maxlength="120" placeholder="Write something meaningful" />
+                </div>
+                <div class="form-row">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description" rows="3" maxlength="500" placeholder="Optional context or notes"></textarea>
+                </div>
+                <button type="submit">Create</button>
+                <p class="form-status" id="form-status" aria-live="polite"></p>
+            </form>
+        </section>
+
+        <section class="card">
+            <div class="list-header">
+                <h2>Items</h2>
+                <button id="refresh">Refresh</button>
+            </div>
+            <ul id="items" class="item-list"></ul>
+            <p id="empty-state" class="empty-state">No items yet. Add your first one!</p>
+        </section>
+    </main>
+
+    <template id="item-template">
+        <li class="item">
+            <div class="item-content">
+                <h3 class="item-title"></h3>
+                <p class="item-description"></p>
+                <p class="item-meta"></p>
+            </div>
+            <button class="danger delete">Delete</button>
+        </li>
+    </template>
+
+    <script src="/app.js"></script>
+</body>
+</html>
