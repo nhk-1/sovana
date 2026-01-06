@@ -56,7 +56,7 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	log.Printf("received upload: %s (%d bytes)", header.Filename, header.Size)
-	transactions, err := parser.ParseCSV(file)
+	transactions, err := parser.ParsePDF(file)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

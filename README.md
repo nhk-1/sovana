@@ -1,6 +1,6 @@
 # SaaS Détection d’Abonnements (MVP)
 
-Prototype Go qui analyse un relevé bancaire CSV pour détecter des abonnements mensuels récurrents. Frontend minimal (HTML/CSS/JS) et API REST stateless avec stockage en mémoire.
+Prototype Go qui analyse un relevé bancaire PDF pour détecter des abonnements mensuels récurrents. Frontend minimal (HTML/CSS/JS) et API REST stateless avec stockage en mémoire.
 
 ## Démarrage
 
@@ -18,27 +18,29 @@ Options :
 ## API
 
 - `GET /api/health` : santé
-- `POST /api/upload` : upload CSV (champ `file` en multipart/form-data), déclenche parsing + détection. Réponse `{subscriptions: [...], count: N}`.
+- `POST /api/upload` : upload PDF (champ `file` en multipart/form-data), déclenche parsing + détection. Réponse `{subscriptions: [...], count: N}`.
 - `GET /api/subscriptions` : retourne la dernière détection en mémoire.
 
-## Format CSV attendu
+## Format PDF attendu
 
-Colonnes détectées automatiquement :
+Le parser extrait le texte brut du PDF puis applique les mêmes heuristiques que pour un fichier tabulaire :
 
-- Séparateur `;` ou `,` (détection auto)
-- Date : `YYYY-MM-DD`, `DD/MM/YYYY`, `DD-MM-YYYY`
-- Montant : colonne unique ou couple débit/crédit, séparateur `.` ou `,`, signe `-` pour un débit
+- Séparateur `;` ou `,` détecté automatiquement (tabs convertis en séparateur)
+- Colonnes attendues : date, libellé, montant ou couple débit/crédit
+- Dates supportées : `YYYY-MM-DD`, `DD/MM/YYYY`, `DD-MM-YYYY`
+- Montants avec `,` ou `.` (débit négatif ou colonne débit dédiée)
 - Libellés ignorés automatiquement : `Ajout de fonds`, `Solde`, `Virement interne`
 - Les lignes invalides sont ignorées (et journalisées en debug) sans bloquer l’import
-- Exemple :
+- Exemple de lignes dans un PDF :
 
-```csv
-2024-01-02,NETFLIX,-13.49
-2024-02-02,NETFLIX,-13.49
-2024-03-02,NETFLIX,-13.49
-2024-01-10,SPOTIFY,-9.99
-2024-02-10,SPOTIFY,-9.99
-2024-03-10,SPOTIFY,-9.99
+```
+date;libelle;debit;credit
+2024-01-02;NETFLIX;13,49;
+2024-02-02;NETFLIX;13,49;
+2024-03-02;NETFLIX;13,49;
+2024-01-10;SPOTIFY;9,99;
+2024-02-10;SPOTIFY;9,99;
+2024-03-10;SPOTIFY;9,99;
 ```
 
 ## Logique de détection
@@ -52,7 +54,7 @@ Colonnes détectées automatiquement :
 
 ## Frontend
 
-- Upload CSV + bouton “Analyser”
+- Upload PDF + bouton “Analyser”
 - Affichage dynamique des abonnements détectés (montant mensuel, premières/dernières occurrences, coût annuel)
 - Bouton “Comment résilier” qui ouvre la page officielle si connue
 

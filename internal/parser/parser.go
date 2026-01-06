@@ -2,12 +2,12 @@ package parser
 
 import (
 	"bufio"
-	"encoding/csv"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -29,30 +29,30 @@ type columnIndexes struct {
 	credit int
 }
 
-// ParseCSV reads a CSV bank statement and converts it to a slice of transactions.
-// The parser automatically detects separators (; or ,), identifies date/label/amount
-// or debit/credit columns, tolerates invalid lines, and logs ignored rows at debug level.
-func ParseCSV(r io.Reader) ([]model.Transaction, error) {
+// ParsePDF reads a PDF bank statement and converts it to a slice of transactions.
+// The parser extracts plain text, automatically detects separators (; or ,), identifies
+// date/label/amount or debit/credit columns, tolerates invalid lines, and logs ignored
+// rows at debug level.
+func ParsePDF(r io.Reader) ([]model.Transaction, error) {
 	data, err := io.ReadAll(r)
 	if err != nil {
-		return nil, fmt.Errorf("read csv: %w", err)
+		return nil, fmt.Errorf("read pdf: %w", err)
 	}
 	if len(data) == 0 {
-		return nil, errors.New("empty csv")
+		return nil, errors.New("empty pdf")
 	}
 
-	sep := detectSeparator(data)
-	reader := csv.NewReader(strings.NewReader(string(data)))
-	reader.TrimLeadingSpace = true
-	reader.Comma = sep
-	reader.FieldsPerRecord = -1
-
-	rows, err := reader.ReadAll()
+	text, err := extractPDFText(data)
 	if err != nil {
-		return nil, fmt.Errorf("parse csv: %w", err)
+		return nil, err
 	}
+	if strings.TrimSpace(text) == "" {
+		return nil, errors.New("pdf contains no text to parse")
+	}
+
+	rows := buildRowsFromText(text)
 	if len(rows) == 0 {
-		return nil, errors.New("empty csv")
+		return nil, errors.New("no tabular data found in pdf")
 	}
 
 	idx, start := detectColumns(rows)
@@ -87,6 +87,83 @@ func ParseCSV(r io.Reader) ([]model.Transaction, error) {
 	}
 
 	return transactions, nil
+}
+
+func extractPDFText(data []byte) (string, error) {
+	content := string(data)
+	if !strings.Contains(content, "%PDF") {
+		return content, nil
+	}
+
+	re := regexp.MustCompile(`\(([^()]*)\)`)
+	matches := re.FindAllStringSubmatch(content, -1)
+	if len(matches) > 0 {
+		lines := make([]string, 0, len(matches))
+		for _, m := range matches {
+			if len(m) > 1 {
+				lines = append(lines, m[1])
+			}
+		}
+		return strings.Join(lines, "\n"), nil
+	}
+
+	lower := strings.ToLower(content)
+	var buf strings.Builder
+	start := 0
+	for {
+		streamIdx := strings.Index(lower[start:], "stream")
+		if streamIdx == -1 {
+			break
+		}
+		streamIdx += start
+		endIdx := strings.Index(lower[streamIdx:], "endstream")
+		if endIdx == -1 {
+			break
+		}
+		endIdx += streamIdx
+		fragment := content[streamIdx+len("stream") : endIdx]
+		buf.WriteString(fragment)
+		buf.WriteString("\n")
+		start = endIdx + len("endstream")
+	}
+
+	if buf.Len() > 0 {
+		return buf.String(), nil
+	}
+
+	return content, nil
+}
+
+func buildRowsFromText(text string) [][]string {
+	sep := detectSeparator([]byte(text))
+	lines := strings.Split(text, "\n")
+	rows := make([][]string, 0, len(lines))
+	for _, raw := range lines {
+		line := strings.TrimSpace(raw)
+		if line == "" {
+			continue
+		}
+
+		line = strings.ReplaceAll(line, "\t", string(sep))
+
+		var fields []string
+		if strings.Contains(line, string(sep)) {
+			fields = strings.Split(line, string(sep))
+			if len(fields) < 3 && sep == ',' {
+				fields = strings.Fields(line)
+			}
+		} else {
+			fields = strings.Fields(line)
+		}
+		for i := range fields {
+			fields[i] = strings.TrimSpace(fields[i])
+		}
+		if len(fields) == 0 {
+			continue
+		}
+		rows = append(rows, fields)
+	}
+	return rows
 }
 
 func detectSeparator(data []byte) rune {

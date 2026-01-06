@@ -4,9 +4,9 @@ const statusEl = document.getElementById('status');
 const listEl = document.getElementById('subscriptions');
 const countEl = document.getElementById('count');
 
-analyzeBtn.addEventListener('click', async () => {
+  analyzeBtn.addEventListener('click', async () => {
   if (!fileInput.files.length) {
-    setStatus('Ajoutez un fichier CSV.', 'error');
+    setStatus('Ajoutez un fichier PDF.', 'error');
     return;
   }
 

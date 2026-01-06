@@ -1,13 +1,20 @@
 package parser
 
 import (
+	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 )
 
-func TestParseCSVSeparatorAndHeader(t *testing.T) {
-	csvData := "Date;Libellé;Montant\n2024-01-01;Netflix;13,49\n2024-02-01;Spotify;9.99"
-	txs, err := ParseCSV(strings.NewReader(csvData))
+func TestParsePDFSeparatorAndHeader(t *testing.T) {
+	pdfData := buildPDF(t, []string{
+		"Date;Libellé;Montant",
+		"2024-01-01;Netflix;13,49",
+		"2024-02-01;Spotify;9.99",
+	})
+
+	txs, err := ParsePDF(bytes.NewReader(pdfData))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -22,14 +29,16 @@ func TestParseCSVSeparatorAndHeader(t *testing.T) {
 	}
 }
 
-func TestParseCSVWithDebitCreditAndInvalidRows(t *testing.T) {
-	csvData := `Date,Description,Debit,Credit
-not-a-date,Ignored Row,10,
-2024-01-10,Virement interne,0,100
-2024-01-12,Electricity,-55.5,
-2024-01-15,Payout,,75.25`
+func TestParsePDFWithDebitCreditAndInvalidRows(t *testing.T) {
+	pdfData := buildPDF(t, []string{
+		"Date,Description,Debit,Credit",
+		"not-a-date,Ignored Row,10,",
+		"2024-01-10,Virement interne,0,100",
+		"2024-01-12,Electricity,-55.5,",
+		"2024-01-15,Payout,,75.25",
+	})
 
-	txs, err := ParseCSV(strings.NewReader(csvData))
+	txs, err := ParsePDF(bytes.NewReader(pdfData))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -44,9 +53,13 @@ not-a-date,Ignored Row,10,
 	}
 }
 
-func TestParseCSVWithoutHeader(t *testing.T) {
-	csvData := "2024-01-01,Service A,15.00\n2024-02-01,Service B,15,00"
-	txs, err := ParseCSV(strings.NewReader(csvData))
+func TestParsePDFWithoutHeader(t *testing.T) {
+	pdfData := buildPDF(t, []string{
+		"2024-01-01 ServiceA 15.00",
+		"2024-02-01 ServiceB 15,00",
+	})
+
+	txs, err := ParsePDF(bytes.NewReader(pdfData))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -56,4 +69,22 @@ func TestParseCSVWithoutHeader(t *testing.T) {
 	if txs[1].Amount != 15.00 {
 		t.Fatalf("expected amount 15.00, got %v", txs[1].Amount)
 	}
+}
+
+func buildPDF(t *testing.T, lines []string) []byte {
+	t.Helper()
+	var builder strings.Builder
+	builder.WriteString("%PDF-1.4\n")
+	builder.WriteString("1 0 obj <<>> endobj\n")
+	builder.WriteString("2 0 obj <<>> stream\n")
+	builder.WriteString("BT /F1 12 Tf 72 712 Td\n")
+	for i, line := range lines {
+		builder.WriteString(fmt.Sprintf("(%s) Tj\n", line))
+		if i < len(lines)-1 {
+			builder.WriteString("T*\n")
+		}
+	}
+	builder.WriteString("ET\nendstream\nendobj\ntrailer <<>>\n%%EOF")
+
+	return []byte(builder.String())
 }
