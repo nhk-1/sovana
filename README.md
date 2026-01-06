@@ -23,10 +23,13 @@ Options :
 
 ## Format CSV attendu
 
-Colonnes : `date, libellé, montant`. En-tête optionnelle.
+Colonnes détectées automatiquement :
 
-- Date : `YYYY-MM-DD`, `DD/MM/YYYY`, `MM/DD/YYYY` ou `YYYY/MM/DD`
-- Montant : séparateur `.` ou `,`, signe `-` pour un débit.
+- Séparateur `;` ou `,` (détection auto)
+- Date : `YYYY-MM-DD`, `DD/MM/YYYY`, `DD-MM-YYYY`
+- Montant : colonne unique ou couple débit/crédit, séparateur `.` ou `,`, signe `-` pour un débit
+- Libellés ignorés automatiquement : `Ajout de fonds`, `Solde`, `Virement interne`
+- Les lignes invalides sont ignorées (et journalisées en debug) sans bloquer l’import
 - Exemple :
 
 ```csv
